@@ -43,3 +43,11 @@ Open http://127.0.0.1:8000/
 Run behind HTTPS and keep the public scanner protected with rate limits and access controls appropriate to your environment.
 
 Use only against systems you own or are explicitly authorized to assess.
+
+## One-click hosted deployment
+
+The app is packaged as a single Render web service with the UI and scanner API on the same origin. Render supports deploying a repository Blueprint from a `render.yaml` file, and its Deploy to Render flow can be launched directly from a repository URL. citeturn103278search0turn103278search1
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/rk11-ops/clickjacking-poc-lab)
+
+After the service is live, open its Render URL. The scanner UI will call `/api/health` and `/api/scan` on the same origin, so no GitHub Pages API wiring is required.
