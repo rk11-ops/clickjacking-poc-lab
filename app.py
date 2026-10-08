@@ -334,7 +334,15 @@ async def scan(req: ScanRequest, request: Request):
 
 
 async def build_result(client, browser, current, root, browser_verify):
-    fetched = await fetch(client, current)
+    try:
+        fetched = await fetch(client, current)
+    except ValueError as exc:
+        return {
+            "url": current, "status_code": 0, "final_url": current,
+            "state": "ERROR", "confidence": "high", "browser": None,
+            "x_frame_options": None, "csp_frame_ancestors": None,
+            "reasons": [str(exc)], "_crawl_body": ""
+        }
     if fetched.error:
         return {
             "url": current, "status_code": 0, "final_url": fetched.final_url,
