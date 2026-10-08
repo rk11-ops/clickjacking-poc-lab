@@ -186,23 +186,33 @@ async def fetch(client: httpx.AsyncClient, url: str) -> FetchResult:
 
 
 async def frame_probe(browser, target_url: str) -> dict:
+    from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+    from threading import Thread
+
+    class ProbeHandler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            body = f"""<!doctype html><html><body style="margin:0">
+            <iframe id="probe" src="{target_url}" style="width:1200px;height:800px;border:0"></iframe>
+            </body></html>""".encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, *_args):
+            return
+
+    server = ThreadingHTTPServer(("127.0.0.1", 0), ProbeHandler)
+    thread = Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    probe_url = f"http://127.0.0.1:{server.server_port}/"
+
     page = await browser.new_page()
     try:
-        await page.goto("about:blank")
-        target_host = (urlparse(target_url).hostname or "").lower()
-        await page.evaluate(
-            """url => {
-                const f = document.createElement("iframe");
-                f.id = "probe";
-                f.src = url;
-                f.style.width = "1200px";
-                f.style.height = "800px";
-                f.style.border = "0";
-                document.body.appendChild(f);
-            }""",
-            target_url,
-        )
+        await page.goto(probe_url, wait_until="domcontentloaded")
         await page.wait_for_timeout(1800)
+        target_host = (urlparse(target_url).hostname or "").lower()
         frames = [f for f in page.frames if f != page.main_frame]
         reached = any(
             (urlparse(f.url).hostname or "").lower() == target_host
@@ -216,12 +226,14 @@ async def frame_probe(browser, target_url: str) -> dict:
             }
         return {
             "status": "FRAME_BLOCKED_OR_UNREACHABLE",
-            "detail": "The browser did not reach the target page inside the separate-origin frame."
+            "detail": "The target page was not reached from the separate-origin probe page."
         }
     except Exception as exc:
         return {"status": "BROWSER_CHECK_ERROR", "detail": str(exc)}
     finally:
         await page.close()
+        server.shutdown()
+        server.server_close()
 
 
 @app.get("/api/health")
