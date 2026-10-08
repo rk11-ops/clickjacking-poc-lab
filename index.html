@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Clickjacking PoC Lab — authorized iframe-based UI redress testing utility.">
+<title>Clickjacking PoC Lab</title>
+<link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+
+<div id="boot">
+  <span style="animation:typeIn .25s ease .1s forwards">&gt; initializing reconforge module<span class="cursor"></span></span>
+  <span style="animation:typeIn .25s ease .6s forwards">&gt; checking frame-ancestors policy... done</span>
+  <span style="animation:typeIn .25s ease 1.0s forwards">&gt; loading PoC lab interface... done</span>
+  <span style="animation:typeIn .25s ease 1.4s forwards; color:var(--ok)">&gt; access granted</span>
+</div>
+
+<header class="topbar">
+  <div class="brand"><span class="mark">RF</span> / CLICKJACKING PoC LAB <small>v3.1</small></div>
+  <div class="top-actions">
+    <button class="ghost" id="openTarget">OPEN TARGET</button>
+    <button class="ghost" id="fullscreen">FULLSCREEN</button>
+  </div>
+</header>
+
+<main class="app">
+  <aside class="sidebar" id="sidebar">
+    <div class="handle" id="resizeHandle" aria-label="Resize sidebar"></div>
+    <div class="side-inner">
+      <div class="eyebrow">RECONFORGE SECURITY LAB</div>
+      <h1>Clickjacking<br><em>PoC</em></h1>
+      <p class="intro">
+        Load an authorized target inside a frame to verify whether browser
+        anti-framing controls prevent embedding.
+      </p>
+
+      <section class="card">
+        <div class="label">TARGET URL</div>
+        <input id="urlInput" type="url" spellcheck="false"
+               placeholder="https://example.com"
+               value="https://example.com/">
+        <div class="row">
+          <button id="loadBtn" class="primary">LOAD TARGET</button>
+          <button id="resetBtn" class="secondary">RESET</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="label">DISPLAY</div>
+        <label class="switch-row">
+          <span>Show framing guide</span>
+          <input type="checkbox" id="guide" checked>
+        </label>
+        <label class="switch-row">
+          <span>Transparent frame mode</span>
+          <input type="checkbox" id="transparent">
+        </label>
+        <label class="slider-row">
+          <span>Frame opacity <b id="opacityValue">100%</b></span>
+          <input id="opacity" type="range" min="10" max="100" value="100">
+        </label>
+      </section>
+
+      <section class="card command-card">
+        <div class="label">POC TEMPLATE</div>
+        <pre id="snippet">&lt;iframe src="https://example.com/" ...&gt;</pre>
+        <div class="row">
+          <button id="copyBtn" class="secondary">COPY HTML</button>
+          <button id="downloadBtn" class="secondary">SAVE HTML</button>
+        </div>
+      </section>
+
+      <div class="notice">
+        <strong>AUTHORIZED USE ONLY</strong>
+        <span>This utility demonstrates iframe embedding. A blocked frame can
+        appear blank or fail to render because of browser-enforced policies.</span>
+      </div>
+
+      <div class="side-footer">
+        <span>CLICKJACKING LAB</span>
+        <span>CLIENT-SIDE PoC</span>
+      </div>
+    </div>
+  </aside>
+
+  <section class="workspace">
+    <div class="workspace-head">
+      <div>
+        <div class="kicker">LIVE FRAME PREVIEW</div>
+        <div class="target-display" id="targetDisplay">https://example.com/</div>
+      </div>
+      <div class="status-pill" id="frameStatus"><i></i> READY</div>
+    </div>
+
+    <div class="viewport">
+      <div class="scan"></div>
+      <div class="guide active" id="guideBox">
+        <div class="guide-corner tl"></div>
+        <div class="guide-corner tr"></div>
+        <div class="guide-corner bl"></div>
+        <div class="guide-corner br"></div>
+        <span>IFRAME BOUNDARY</span>
+      </div>
+
+      <iframe
+        id="targetFrame"
+        title="Clickjacking PoC target preview"
+        referrerpolicy="no-referrer"
+        loading="eager"
+        src="https://example.com/">
+      </iframe>
+
+      <div class="blocked-hint" id="blockedHint">
+        <div>
+          <strong>FRAME MAY BE BLOCKED</strong>
+          <p>If the target does not render, inspect X-Frame-Options and CSP
+            <code>frame-ancestors</code> in the target's response.</p>
+        </div>
+      </div>
+    </div>
+
+    <footer class="workspace-foot">
+      <span>Embedding is subject to browser same-origin and anti-framing policies.</span>
+      <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Frame-Options" target="_blank" rel="noopener">X-FRAME-OPTIONS</a>
+      <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/frame-ancestors" target="_blank" rel="noopener">CSP FRAME-ANCESTORS</a>
+    </footer>
+  </section>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+let lastUrl = $("urlInput").value;
+
+function normalizeUrl(value) {
+  let url = value.trim();
+  if (!url) return "";
+  if (!/^https?:\/\//i.test(url)) url = "https://" + url;
+  return url;
+}
+function validUrl(url) {
+  try { const u = new URL(url); return u.protocol === "http:" || u.protocol === "https:"; }
+  catch { return false; }
+}
+function setStatus(text, state="ready") {
+  const el = $("frameStatus");
+  el.className = "status-pill " + state;
+  el.innerHTML = `<i></i> ${text}`;
+}
+function updateSnippet(url) {
+  $("snippet").textContent =
+`<iframe
+  src="${url}"
+  width="100%"
+  height="720"
+  style="border:0"
+  title="Clickjacking PoC">
+</iframe>`;
+}
+function loadTarget() {
+  const url = normalizeUrl($("urlInput").value);
+  if (!validUrl(url)) { alert("Enter a valid HTTP/HTTPS URL."); return; }
+  $("urlInput").value = url;
+  lastUrl = url;
+  $("targetDisplay").textContent = url;
+  updateSnippet(url);
+  setStatus("LOADING", "loading");
+  $("blockedHint").classList.remove("show");
+  $("targetFrame").src = url;
+}
+$("loadBtn").onclick = loadTarget;
+$("urlInput").addEventListener("keydown", e => { if (e.key === "Enter") loadTarget(); });
+$("targetFrame").addEventListener("load", () => {
+  setStatus("FRAME EVENT", "loaded");
+  setTimeout(() => $("blockedHint").classList.add("show"), 800);
+});
+$("resetBtn").onclick = () => { $("urlInput").value = "https://example.com/"; loadTarget(); };
+$("openTarget").onclick = () => {
+  const url = normalizeUrl($("urlInput").value);
+  if (validUrl(url)) window.open(url, "_blank", "noopener,noreferrer");
+};
+$("fullscreen").onclick = async () => {
+  const vp = document.querySelector(".viewport");
+  if (!document.fullscreenElement) await vp.requestFullscreen?.();
+  else await document.exitFullscreen?.();
+};
+$("guide").onchange = e => $("guideBox").classList.toggle("off", !e.target.checked);
+$("transparent").onchange = e => { $("targetFrame").classList.toggle("transparent", e.target.checked); };
+$("opacity").oninput = e => {
+  $("opacityValue").textContent = e.target.value + "%";
+  $("targetFrame").style.opacity = Number(e.target.value) / 100;
+};
+$("copyBtn").onclick = async () => {
+  await navigator.clipboard.writeText($("snippet").textContent);
+  setStatus("HTML COPIED", "loaded");
+  setTimeout(() => setStatus("READY", "ready"), 1200);
+};
+$("downloadBtn").onclick = () => {
+  const url = normalizeUrl($("urlInput").value);
+  if (!validUrl(url)) return alert("Enter a valid HTTP/HTTPS URL.");
+  const html = `<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Clickjacking PoC</title></head>
+<body style="margin:0;background:#111;color:#fff;font-family:Arial,sans-serif">
+<h2>Clickjacking PoC</h2>
+<p>Authorized testing only.</p>
+<iframe src="${url}" width="100%" height="720" style="border:0"></iframe>
+</body>
+</html>`;
+  const blob = new Blob([html], {type:"text/html"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "clickjacking-poc.html";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+};
+loadTarget();
+</script>
+</body>
+</html>
