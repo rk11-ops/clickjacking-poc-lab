@@ -46,7 +46,7 @@ Use only against systems you own or are explicitly authorized to assess.
 
 ## One-click hosted deployment
 
-The app is packaged as a single Render web service with the UI and scanner API on the same origin. Render supports deploying a repository Blueprint from a `render.yaml` file, and its Deploy to Render flow can be launched directly from a repository URL. citeturn103278search0turn103278search1
+The app is packaged as a single Render web service with the UI and scanner API on the same origin. Render supports deploying a repository Blueprint from a `render.yaml` file, and its Deploy to Render flow can be launched directly from a repository URL.
 
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/rk11-ops/clickjacking-poc-lab)
 
