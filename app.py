@@ -257,7 +257,14 @@ async def health():
 
 
 @app.post("/api/scan")
-async def scan(req: ScanRequest):
+async def scan(req: ScanRequest, request: Request):
+    client_ip = request.client.host if request.client else "unknown"
+    now = time.monotonic()
+    recent = [stamp for stamp in RATE_STATE.get(client_ip, []) if now - stamp < RATE_WINDOW]
+    if len(recent) >= RATE_LIMIT:
+        raise HTTPException(status_code=429, detail="Rate limit reached. Please wait before starting another scan.")
+    recent.append(now)
+    RATE_STATE[client_ip] = recent
     try:
         root = normalize_url(req.url)
         assert_public(root)
