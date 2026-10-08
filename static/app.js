@@ -6,11 +6,24 @@ const $ = id => document.getElementById(id);
 const API_BASE = String(
   document.querySelector('meta[name="api-base"]')?.content ||
   localStorage.getItem("clickjacking_api_base") ||
-  ""
-).replace(/\/$/, "");
+  "https://clickjacking-poc-lab.onrender.com"
+).replace(/\\/$/, "");
 
 async function api(path, options) {
   return fetch(API_BASE + path, options);
+}
+
+async function assertApiReady() {
+  const response = await api("/api/health", { method: "GET" });
+  const type = response.headers.get("content-type") || "";
+  if (!type.includes("application/json")) {
+    throw new Error("Scanner backend is not connected. The frontend reached an HTML page instead of the scanner API.");
+  }
+  const data = await response.json();
+  if (!response.ok || !data.ok) {
+    throw new Error("Scanner backend is not healthy.");
+  }
+  return data;
 }
 
 function normalizeUrl(value) {
@@ -108,6 +121,7 @@ async function scanSite() {
   $("targetDisplay").textContent = url;
 
   try {
+    await assertApiReady();
     const response = await api("/api/scan", {
       method: "POST",
       headers: {"Content-Type": "application/json"},
