@@ -4,6 +4,7 @@ import asyncio
 import ipaddress
 import re
 import socket
+import time
 from collections import deque
 from dataclasses import dataclass
 from pathlib import Path
@@ -11,7 +12,7 @@ from urllib.parse import urljoin, urlparse, urlunparse
 
 import httpx
 from bs4 import BeautifulSoup
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -27,6 +28,9 @@ USER_AGENT = "Clickjacking-PoC-Lab/4.0 (authorized-security-testing)"
 
 cors_env = __import__("os").environ.get("CORS_ORIGINS", "https://rk11-ops.github.io,http://localhost:8000,http://127.0.0.1:8000")
 allowed_origins = [x.strip().rstrip("/") for x in cors_env.split(",") if x.strip()]
+RATE_WINDOW = 60.0
+RATE_LIMIT = 5
+RATE_STATE: dict[str, list[float]] = {}
 
 app = FastAPI(title="Clickjacking PoC Lab", version="4.0.0")
 app.add_middleware(
