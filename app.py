@@ -12,6 +12,7 @@ from urllib.parse import urljoin, urlparse, urlunparse
 import httpx
 from bs4 import BeautifulSoup
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -24,7 +25,17 @@ MAX_PAGES = 25
 TIMEOUT = 12.0
 USER_AGENT = "Clickjacking-PoC-Lab/4.0 (authorized-security-testing)"
 
+cors_env = __import__("os").environ.get("CORS_ORIGINS", "https://rk11-ops.github.io,http://localhost:8000,http://127.0.0.1:8000")
+allowed_origins = [x.strip().rstrip("/") for x in cors_env.split(",") if x.strip()]
+
 app = FastAPI(title="Clickjacking PoC Lab", version="4.0.0")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allowed_origins,
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type"],
+)
 app.mount("/static", StaticFiles(directory=APP_DIR / "static"), name="static")
 
 
