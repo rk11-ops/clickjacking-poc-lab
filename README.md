@@ -1,65 +1,45 @@
-# Clickjacking PoC Lab v3.1 — Offensive Edition
+# Clickjacking PoC Lab v4.0 — Site Scanner
 
-A client-side Clickjacking Proof-of-Concept utility with a redesigned
-offensive-security UI: crimson/black terminal theme, boot-sequence intro,
-scanline sweep, and target-lock guide animation. Original implementation
-with ReconForge branding.
+This version is a server-backed authorized-security-testing utility that crawls same-origin HTML pages and reports clickjacking exposure per page.
 
-## What it does
+## Capabilities
 
-- Enter an HTTP/HTTPS target.
-- Load it live in an iframe.
-- Resize the left control panel.
-- Toggle a framing guide.
-- Adjust frame opacity.
-- Open the target in a new tab.
-- Fullscreen the preview.
-- Copy a generic iframe PoC snippet.
-- Save a standalone HTML PoC template.
+- Start with one HTTP/HTTPS root URL.
+- Crawl same-origin HTML links only.
+- Scan up to 25 pages per run.
+- Check X-Frame-Options and CSP frame-ancestors for every HTML page.
+- Optionally perform a separate-origin browser iframe verification.
+- Show exactly which pages are VULNERABLE, PROTECTED, REVIEW, ERROR, or NON_HTML.
+- Keep a dedicated AFFECTED PAGES list for confirmed vulnerable URLs.
+- Block private, loopback, link-local, and other non-global target addresses.
 
-## What changed in v3.1
+## Result meaning
 
-- New offensive/red-team visual theme (crimson accent on near-black).
-- One-time terminal "boot sequence" intro animation.
-- Continuous subtle scanline sweep across the live preview.
-- Pulsing target-lock corners on the framing guide.
-- Animated status pill (amber while loading, green glow when loaded).
-- Respects `prefers-reduced-motion` — all animation disables automatically.
-- All v3.0 functionality preserved as-is.
+VULNERABLE means the page response did not expose an explicit anti-framing control and the separate-origin browser probe reached the target page.
 
-## Important browser limitation
+PROTECTED means X-Frame-Options or a restrictive CSP frame-ancestors directive was observed.
 
-The browser's cross-origin security model means a client-side tool cannot
-reliably inspect the target's response headers directly. A visible iframe
-load event is therefore not proof that clickjacking is exploitable.
+REVIEW means the headers or browser result are ambiguous and require manual verification.
 
-For a real assessment, verify the target's HTTP response for:
-- X-Frame-Options
-- Content-Security-Policy: frame-ancestors
-
-A target may also refuse framing for reasons other than these headers.
+This is an assessment signal, not a guarantee of exploitability in every application workflow.
 
 ## Run locally
 
-This project is static. No backend is required.
-
-### Option 1
-Open `index.html` directly in a browser.
-
-### Option 2
 ```bash
-python3 -m http.server 8080
+python -m venv .venv
+# Windows
+.venv\\Scripts\\activate
+# Linux/macOS
+source .venv/bin/activate
+pip install -r requirements.txt
+python -m playwright install chromium
+uvicorn app:app --host 127.0.0.1 --port 8000
 ```
-Open http://127.0.0.1:8080
 
-### Option 3
-Deploy to GitHub Pages, Cloudflare Pages, Netlify, or any static hosting.
-See `GITHUB_PAGES.md` for step-by-step GitHub Pages instructions.
+Open http://127.0.0.1:8000/
 
-## Public deployment
+## Production
 
-Because target pages are loaded directly by the visitor's browser, the server
-does not fetch arbitrary target URLs. That keeps the public version simple and
-avoids turning the application into a server-side SSRF proxy.
+Run behind HTTPS and keep the public scanner protected with rate limits and access controls appropriate to your environment.
 
-Use only against targets you own or are explicitly authorized to assess.
+Use only against systems you own or are explicitly authorized to assess.
