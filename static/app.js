@@ -1,5 +1,18 @@
 const $ = id => document.getElementById(id);
 
+// API base can be supplied by a meta tag, localStorage, or the current origin.
+// This keeps the UI usable on GitHub Pages while allowing the scanner backend
+// to run separately on Python-capable hosting such as Render.
+const API_BASE = String(
+  document.querySelector('meta[name="api-base"]')?.content ||
+  localStorage.getItem("clickjacking_api_base") ||
+  ""
+).replace(/\/$/, "");
+
+async function api(path, options) {
+  return fetch(API_BASE + path, options);
+}
+
 function normalizeUrl(value) {
   let url = String(value || "").trim();
   if (!url) return "";
@@ -95,7 +108,7 @@ async function scanSite() {
   $("targetDisplay").textContent = url;
 
   try {
-    const response = await fetch("/api/scan", {
+    const response = await api("/api/scan", {
       method: "POST",
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify({
