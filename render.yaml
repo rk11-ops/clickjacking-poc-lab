@@ -5,4 +5,4 @@ services:
     plan: free
     branch: main
     healthCheckPath: /api/health
-    autoDeployTrigger: commit
+    autoDeployTrigger: off
