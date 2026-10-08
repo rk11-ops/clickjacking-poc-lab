@@ -6,7 +6,7 @@ const $ = id => document.getElementById(id);
 const API_BASE = String(
   document.querySelector('meta[name="api-base"]')?.content ||
   localStorage.getItem("clickjacking_api_base") ||
-  "https://clickjacking-poc-lab.onrender.com"
+  ""
 ).replace(/\\/$/, "");
 
 async function api(path, options) {
